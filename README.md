@@ -30,3 +30,11 @@ conda activate met-app
 ### Environment Variables
 
 If applicable, create a local `.env` file and set the required environment variables.
+
+## Usage
+
+# Running the Program
+
+```sh
+python app/app.py
+```

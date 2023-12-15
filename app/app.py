@@ -1,18 +1,28 @@
-# Package Import
+# PACKAGE IMPORT
 
+import os
 import requests
 import random
-import os
+import sendgrid
+
 from IPython.display import display, Image
 from datetime import datetime
 
-# Authorization and API Access
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
+
+# AUTHORIZATION & API ACCESS
 
 all_objects = "https://collectionapi.metmuseum.org/public/collection/v1/objects"
 response_test = requests.get(all_objects)
 api_test = response_test.json()
 
-# Collecting User Info
+from dotenv import load_dotenv
+load_dotenv()
+SENDER_ADDRESS = os.getenv("SENDER_ADDRESS")
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+
+# COLLECTING USER INFO
 
 def get_user_email():
     return input("Please enter your email address: ")
@@ -20,16 +30,13 @@ def get_user_email():
 def get_user_name():
     return input("Please enter your name: ")
 
-# Usage
-
-from dotenv import load_dotenv
-load_dotenv()
-SENDER_ADDRESS = os.getenv("SENDER_ADDRESS")
-SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+# USAGE
 
 def get_random_object_id():
     return random.randint(1, 485596)
 
+# Met API Endpoint for Objects
+objects_endpoint = "https://collectionapi.metmuseum.org/public/collection/v1/objects"
 
 def get_artwork_summary(object_id):
     url = (
@@ -83,7 +90,7 @@ def display_artwork(artwork_summary, image_size=(300, 300)):
     else:
         print("\nPrimary Image: Image not available.")
 
-# Sending the Email
+# SENDING THE EMAIL
 
 #formatting the current date
 current_date = datetime.today().date()
@@ -91,7 +98,8 @@ formatted_date = current_date.strftime("%A, %B %d, %Y")
 
 def send_email_with_artwork_and_buttons(
     artwork_summary,
-    recipient_address="adw94@georgetown.edu",
+    formatted_date,
+    recipient_address="sjm189@georgetown.edu",
     subject="Snapshot of The Met: Check out this amazing artwork!",
 ):
     print("SENDING EMAIL TO:", recipient_address)
@@ -121,41 +129,139 @@ def send_email_with_artwork_and_buttons(
     if artwork_summary["Artist URL"] and artwork_summary["Artist URL"] != "N/A":
         html_content += f'<div><a href="{artwork_summary["Artist URL"]}" style="background-color: #eb0029; color: white; padding: 10px 15px; margin-top: 10px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px;">Learn more about the artist here.</a></div>'
 
+    # Use SendGrid to send the email
+    message = Mail(
+        from_email=SENDER_ADDRESS,
+        to_emails=recipient_address,
+        subject=subject,
+        html_content=html_content,
+    )
+
     try:
-        request_url = "https://api.sendgrid.com/v3/mail/send"
-        message_data = {
-            "personalizations": [{"to": [{"email": recipient_address}]}],
-            "from": {"email": SENDER_ADDRESS},
-            "subject": subject,
-            "content": [{"type": "text/html", "value": html_content}],
-        }
-        headers = {"Authorization": f"Bearer {SENDGRID_API_KEY}"}
-        response = requests.post(request_url, headers=headers, json=message_data)
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        response = sg.send(message)
         print("RESULT:", response.status_code)
-        response.raise_for_status()
         print("Email sent successfully!")
         return response.status_code
-    except requests.exceptions.RequestException as e:
+    except Exception as e:
         print(f"Error sending email: {str(e)}")
         return None
 
+# Function to get user's choice on whether to input a department
+def get_user_department_choice():
+    choice = input("Do you want to filter by department? (yes/no): ").lower()
+    return choice == "yes"
+
+# Function to get the user's preferred department
+def get_user_department():
+    print("Choose a department:")
+    departments = [
+        {"departmentId": 1, "displayName": "American Decorative Arts"},
+        {"departmentId": 2, "displayName": "Ancient Near Eastern Art"},
+        {"departmentId": 3, "displayName": "Arms and Armor"},
+        {"departmentId": 4, "displayName": "Arts of Africa, Oceania, and the Americas"},
+        {"departmentId": 5, "displayName": "Asian Art"},
+        {"departmentId": 6, "displayName": "The Cloisters"},
+        {"departmentId": 7, "displayName": "The Costume Institute"},
+        {"departmentId": 8, "displayName": "Drawings and Prints"},
+        {"departmentId": 9, "displayName": "Egyptian Art"},
+        {"departmentId": 10, "displayName": "European Paintings"},
+        {"departmentId": 11, "displayName": "European Sculpture and Decorative Arts"},
+        {"departmentId": 12, "displayName": "Greek and Roman Art"},
+        {"departmentId": 13, "displayName": "Islamic Art"},
+        {"departmentId": 14, "displayName": "The Robert Lehman Collection"},
+        {"departmentId": 15, "displayName": "The Libraries"},
+        {"departmentId": 16, "displayName": "Medieval Art"},
+        {"departmentId": 17, "displayName": "Musical Instruments"},
+        {"departmentId": 18, "displayName": "Photographs"},
+        {"departmentId": 19, "displayName": "Modern Art"},
+    ]
+
+    for dept in departments:
+        print(f"{dept['departmentId']}. {dept['displayName']}")
+
+    department_choice = int(input("Enter the number corresponding to your preferred department: "))
+    return next((dept for dept in departments if dept["departmentId"] == department_choice), None)
+
+# Function to get a random object ID based on user preferences
+def get_random_object_id_for_department(department_id):
+    params = {"departmentIds": department_id, "hasImages": "true"}
+    response = requests.get(objects_endpoint, params=params)
+    data = response.json()
+
+    if "objectIDs" in data:
+        object_ids = data["objectIDs"]
+        if object_ids:
+            return random.choice(object_ids)
+    return None
+
+# While Loop
 while True:
-    random_object_id = get_random_object_id()
-    artwork_summary = get_artwork_summary(random_object_id)
+    user_wants_department = get_user_department_choice()
 
-    if artwork_summary:
-        display_artwork(artwork_summary)
-        paragraph = create_artwork_paragraph(artwork_summary)
-        print("\nArtwork Description:")
-        print(paragraph)
+    if user_wants_department:
+        user_department = get_user_department()
 
-        # Prompt user for email address
-        recipient_email = get_user_email()
+        while user_department:
+            random_object_id = get_random_object_id_for_department(user_department["departmentId"])
 
-        # Send email with artwork summary and buttons
-        send_email_with_artwork_and_buttons(artwork_summary, recipient_address=recipient_email)
-        break
+            artwork_summary = get_artwork_summary(random_object_id)
+
+            if artwork_summary:
+                display_artwork(artwork_summary)
+                paragraph = create_artwork_paragraph(artwork_summary)
+                print("\nArtwork Description:")
+                print(paragraph)
+
+                # Prompt user for email address
+                recipient_email = get_user_email()
+
+                # Send email with artwork summary and buttons
+                send_email_with_artwork_and_buttons(
+                    artwork_summary,
+                    formatted_date,
+                    recipient_address=recipient_email,
+                    subject="Snapshot of The Met: Check out this amazing artwork!",
+                )
+                break
+            else:
+                print(
+                    f"Object ID {random_object_id} does not have complete information or an available image. Trying another one..."
+                )
+
+        # Ask the user if they want to search for another artwork
+        another_search = input("Do you want to search for another artwork? (yes/no): ").lower()
+        if another_search != "yes":
+            break
     else:
-        print(
-            f"Object ID {random_object_id} does not have complete information or an available image. Trying another one..."
-        )
+        while True:
+            random_object_id = get_random_object_id()
+
+            artwork_summary = get_artwork_summary(random_object_id)
+
+            if artwork_summary:
+                display_artwork(artwork_summary)
+                paragraph = create_artwork_paragraph(artwork_summary)
+                print("\nArtwork Description:")
+                print(paragraph)
+
+                # Prompt user for email address
+                recipient_email = get_user_email()
+
+                # Send email with artwork summary and buttons
+                send_email_with_artwork_and_buttons(
+                    artwork_summary,
+                    formatted_date,
+                    recipient_address=recipient_email,
+                    subject="Snapshot of The Met: Check out this amazing artwork!",
+                )
+                break
+            else:
+                print(
+                    f"Object ID {random_object_id} does not have complete information or an available image. Trying another one..."
+                )
+
+        # Ask the user if they want to search for another artwork
+        another_search = input("Do you want to search for another artwork? (yes/no): ").lower()
+        if another_search != "yes":
+            break
