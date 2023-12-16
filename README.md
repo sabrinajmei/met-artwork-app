@@ -1,4 +1,4 @@
-# met-artwork-app
+# Snapshot of The MET
 **OPAN 3244 Freestyle Project**
 
 ## Description
