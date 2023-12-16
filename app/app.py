@@ -3,7 +3,6 @@
 import os
 import requests
 import random
-import sendgrid
 
 from IPython.display import display, Image
 from datetime import datetime
