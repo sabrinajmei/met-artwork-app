@@ -69,7 +69,7 @@ def create_artwork_paragraph(artwork_summary):
     paragraph += f"For more information, visit [Met Museum source]({artwork_summary['Object URL']})"
 
     # Include Wikidata source if available
-    if artwork_summary["Wikidata URL"] and artwork_summary["Wikidata URL"] != "N/A":
+    if "Wikidata URL" in artwork_summary and artwork_summary["Wikidata URL"] != "N/A":
         paragraph += f" or [Wikidata source]({artwork_summary['Wikidata URL']})."
     else:
         paragraph += "."

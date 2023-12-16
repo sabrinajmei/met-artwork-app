@@ -49,3 +49,6 @@ python app/app.py
 ```
 # Testing
 
+```sh
+pytest -s test/test.py
+```
