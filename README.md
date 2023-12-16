@@ -34,6 +34,7 @@ SENDGRID_API_KEY="_________"
 SENDER_ADDRESS="example.gmail.com"
 
 # Dependencies
+Install required packages:
 
 ```sh
 pip install -r requirements.txt
@@ -48,6 +49,7 @@ Run the Met app:
 python app/app.py
 ```
 # Testing
+Paste the following to test 5 functions and ensure the program is running properly. 
 
 ```sh
 pytest -s test/test.py
